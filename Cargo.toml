@@ -1,0 +1,9 @@
+[package]
+name = "zensend"
+version = "0.0.1"
+
+[dependencies]
+rustc-serialize = "0.3"
+hyper = "0.7.0"
+[dependencies.url]
+git = "https://github.com/servo/rust-url"
