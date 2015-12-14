@@ -12,13 +12,13 @@ use std::io::Read;
 use std::collections::HashMap;
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
-struct SmsResult {
-  txguid: String,
-  numbers: i32,
-  smsparts: i32,
-  encoding: String,
-  cost_in_pence: f64,
-  new_balance_in_pence: f64
+pub struct SmsResult {
+  pub txguid: String,
+  pub numbers: i32,
+  pub smsparts: i32,
+  pub encoding: String,
+  pub cost_in_pence: f64,
+  pub new_balance_in_pence: f64
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
@@ -32,24 +32,25 @@ struct Balance {
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
-struct OperatorLookupResult {
-  mcc: String,
-  mnc: String,
-  operator: String,
-  cost_in_pence: f64,
-  new_balance_in_pence: f64
+pub struct OperatorLookupResult {
+  pub mcc: String,
+  pub mnc: String,
+  pub operator: String,
+  pub cost_in_pence: f64,
+  pub new_balance_in_pence: f64
 }
 
-#[derive(RustcDecodable, RustcEncodable, Debug)]
-struct ZenSendError {
-  failcode: String,
-  parameter: String,
-  cost_in_pence: Option<f64>,
-  new_balance_in_pence: Option<f64>
+#[derive(RustcDecodable, RustcEncodable, Debug, PartialEq)]
+pub struct ZenSendError {
+  pub failcode: String,
+  pub parameter: Option<String>,
+  pub cost_in_pence: Option<f64>,
+  pub new_balance_in_pence: Option<f64>
 }
+
 
 #[derive(Debug)]
-enum Error {
+pub enum Error {
   Io(std::io::Error),
   Json(json::DecoderError),
   Http(hyper::error::Error),
@@ -88,7 +89,8 @@ struct APIResult<R> {
   failure: Option<ZenSendError>
 }
  
-enum OriginatorType {
+#[derive(PartialEq)]
+pub enum OriginatorType {
   Alpha,
   Msisdn
 }
@@ -97,7 +99,7 @@ impl Default for OriginatorType {
   fn default() -> OriginatorType { OriginatorType::Alpha }
 }
 
-enum SmsEncoding {
+pub enum SmsEncoding {
   Auto,
   Gsm,
   Ucs2
@@ -108,27 +110,36 @@ impl Default for SmsEncoding {
 }
 
 #[derive(Default)]
-struct Message<'a> {
-  originator: &'a str,
-  body: &'a str,
-  numbers: &'a[&'a str],
-  originator_type: OriginatorType,
-  sms_encoding: SmsEncoding,
-  time_to_live_in_minutes: Option<i32>
+pub struct Message<'a> {
+  pub originator: &'a str,
+  pub body: &'a str,
+  pub numbers: &'a[&'a str],
+  pub originator_type: OriginatorType,
+  pub sms_encoding: SmsEncoding,
+  pub time_to_live_in_minutes: Option<i32>
 }
 
-struct Client {
+pub struct Client {
   client: hyper::Client,
   api_key: String,
   url: String
 }
 
 impl Client {
-  fn new(api_key: String) -> Client {
+  pub fn new(api_key: String) -> Client {
     Client { client: hyper::Client::new(), api_key: api_key, url: "https://api.zensend.io".into() }
   }
 
-  fn lookup_operator(&self, number: &str) -> Result<OperatorLookupResult, Error> {
+  pub fn new_with_client(api_key: String, client: hyper::Client) -> Client {
+    Client { client: client, api_key: api_key, url: "https://api.zensend.io".into() }
+  }
+
+ 
+  pub fn new_with_client_and_url(api_key: String, client: hyper::Client, url: String) -> Client {
+    Client { client: client, api_key: api_key, url: url }
+  }
+
+  pub fn lookup_operator(&self, number: &str) -> Result<OperatorLookupResult, Error> {
     let vec = vec![("NUMBER", number.to_string())];
     let body = form_urlencoded::serialize(vec.iter());
 
@@ -141,7 +152,7 @@ impl Client {
  
   }
 
-  fn check_balance(&self) -> Result<f64, Error> {
+  pub fn check_balance(&self) -> Result<f64, Error> {
     let url = self.url.clone() + "/v3/checkbalance";
     let mut res = try!(self.client.get(&url)
       .headers(self.api_headers())
@@ -151,7 +162,7 @@ impl Client {
     Ok(result.balance)
   }
 
-  fn get_prices(&self) -> Result<HashMap<String, f64>, Error> {
+  pub fn get_prices(&self) -> Result<HashMap<String, f64>, Error> {
     let headers = self.api_headers();
     let url = self.url.clone() + "/v3/prices";
     let mut res = try!(self.client.get(&url)
@@ -162,13 +173,13 @@ impl Client {
     Ok(result.prices_in_pence)
   }
 
-  fn send_sms(&self, message: Message) -> Result<SmsResult, Error> {
+  pub fn send_sms(&self, message: Message) -> Result<SmsResult, Error> {
  
 
     let numbers = message.numbers.join(",");
  
     let ttl: String;  
-    let mut vec = vec![("BODY", message.body), ("ORIGINATOR", message.originator), ("NUMBERS", numbers.as_ref())];
+    let mut vec = vec![("BODY", message.body), ("ORIGINATOR", message.originator), ("NUMBERS", numbers.as_ref()), ("ORIGINATOR_TYPE", if message.originator_type == OriginatorType::Alpha  {"alpha"} else {"msisdn"})];
     
     match message.time_to_live_in_minutes {
       Some(minutes) => {
@@ -177,11 +188,12 @@ impl Client {
       },
       None => (),
     }
-    
+
+
     match message.sms_encoding {
       SmsEncoding::Auto => (),
-      SmsEncoding::Gsm => vec.push(("ENCODING", "GSM")),
-      SmsEncoding::Ucs2 => vec.push(("ENCODING", "UCS2")),
+      SmsEncoding::Gsm => vec.push(("ENCODING", "gsm")),
+      SmsEncoding::Ucs2 => vec.push(("ENCODING", "ucs2")),
     }
     
     let body = form_urlencoded::serialize(vec.iter());
@@ -221,10 +233,4 @@ impl Client {
   }
 }
 
-fn main() {
-  let client = Client::new("rH_jSYf0d2sbzFw4cSurKQ".into());
-  //let res = client.send_sms(Message { originator: "ZenSend", body: "Hello", numbers: &["447796354848"], ..Default::default()});
-  //let res = client.check_balance();
-  let res = client.get_prices();
-  print!("{:?}", res);
-}
+

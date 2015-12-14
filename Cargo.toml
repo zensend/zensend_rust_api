@@ -7,3 +7,8 @@ rustc-serialize = "0.3"
 hyper = "0.7.0"
 [dependencies.url]
 git = "https://github.com/servo/rust-url"
+
+[dev-dependencies]
+yup-hyper-mock = "*"
+log = "*" 
+matches = "0.1.2"
