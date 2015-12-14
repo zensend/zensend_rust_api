@@ -210,7 +210,7 @@ impl Client {
 
   fn api_headers(&self) -> Headers {
     let mut headers = Headers::new();
-    headers.set_raw("x-api-key", vec![self.api_key.as_bytes().to_vec()]);
+    headers.set_raw("X-API-KEY", vec![self.api_key.as_bytes().to_vec()]);
     headers
   }
 
