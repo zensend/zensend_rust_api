@@ -134,6 +134,10 @@ impl Client {
     Client { client: client, api_key: api_key, url: "https://api.zensend.io".into() }
   }
 
+  pub fn new_with_url(api_key: String, url: String) -> Client {
+    Client { client: hyper::Client::new(), api_key: api_key, url: url }
+  }
+
  
   pub fn new_with_client_and_url(api_key: String, client: hyper::Client, url: String) -> Client {
     Client { client: client, api_key: api_key, url: url }
