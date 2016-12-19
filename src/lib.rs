@@ -40,6 +40,12 @@ pub struct OperatorLookupResult {
   pub new_balance_in_pence: f64
 }
 
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct CreateSubAccountResult {
+  pub api_key: String,
+  pub name: String
+}
+
 #[derive(RustcDecodable, RustcEncodable, Debug, PartialEq)]
 pub struct ZenSendError {
   pub failcode: String,
@@ -175,6 +181,20 @@ impl Client {
 
     let result:Prices = try!(self.handle_result(&mut res));
     Ok(result.prices_in_pence)
+  }
+
+  pub fn create_sub_account(&self, name: String) -> Result<CreateSubAccountResult, Error> {
+    let url = self.url.clone() + "/v3/sub_accounts";
+
+    let vec = vec![("NAME", name)];
+    let body = form_urlencoded::serialize(vec.iter());
+
+    let mut res = try!(self.client.post(&url)
+      .body(body.as_bytes())
+      .headers(self.api_headers())
+      .send());
+
+    self.handle_result(&mut res)
   }
 
   pub fn send_sms(&self, message: Message) -> Result<SmsResult, Error> {

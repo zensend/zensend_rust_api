@@ -70,6 +70,30 @@ fn create_client(response: &'static [u8]) -> (Listening, Client, Arc<Mutex<Saved
 }
 
 #[test]
+fn it_can_create_a_sub_account() {
+
+  let response = br#"{
+    "success":  {
+      "name": "Name",
+      "api_key": "ApiKey"
+    }
+  }"#;
+
+  let (mut r, client, mutex) = create_client(response);
+
+  let wrapped_result = client.create_sub_account("Name".into());
+
+  r.close().unwrap();
+
+  let result = wrapped_result.unwrap();
+  let data = mutex.lock().unwrap();
+
+  assert_eq!("Name", result.name);
+  assert_eq!("ApiKey", result.api_key);
+  assert_eq!("NAME=Name", (*data).body);
+}
+
+#[test]
 fn it_can_send_an_sms() {
 
   let response = br#"{
