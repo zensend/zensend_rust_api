@@ -1,6 +1,6 @@
 extern crate zensend;
 extern crate hyper;
-#[macro_use(matches, _tt_as_expr_hack)]
+#[macro_use]
 extern crate matches;
 
 use zensend::Client;

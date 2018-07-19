@@ -144,8 +144,10 @@ impl Client {
   }
 
   pub fn lookup_operator(&self, number: &str) -> Result<OperatorLookupResult, Error> {
-    let vec = vec![("NUMBER", number.to_string())];
-    let body = form_urlencoded::serialize(vec.iter());
+    let mut form_serializer = form_urlencoded::Serializer::new(String::new());
+
+    form_serializer.append_pair("NUMBER", &number.to_string());
+    let body = form_serializer.finish();
 
     let url = self.url.clone() + "/v3/operator_lookup?" + &body;
     let mut res = try!(self.client.get(&url)
@@ -181,14 +183,20 @@ impl Client {
  
 
     let numbers = message.numbers.join(",");
+    let mut form_serializer = form_urlencoded::Serializer::new(String::new());
  
-    let ttl: String;  
-    let mut vec = vec![("BODY", message.body), ("ORIGINATOR", message.originator), ("NUMBERS", numbers.as_ref()), ("ORIGINATOR_TYPE", if message.originator_type == OriginatorType::Alpha  {"alpha"} else {"msisdn"})];
+
+    form_serializer
+	.append_pair("BODY", message.body)
+	.append_pair("ORIGINATOR", message.originator)
+	.append_pair("NUMBERS", numbers.as_ref())
+	.append_pair("ORIGINATOR_TYPE", if message.originator_type == OriginatorType::Alpha  {"alpha"} else {"msisdn"});
+
     
     match message.time_to_live_in_minutes {
       Some(minutes) => {
-        ttl = minutes.to_string();
-        vec.push(("TIMETOLIVE", ttl.as_ref()))
+        let ttl = minutes.to_string();
+	form_serializer.append_pair("TIMETOLIVE", ttl.as_ref());
       },
       None => (),
     }
@@ -196,11 +204,11 @@ impl Client {
 
     match message.sms_encoding {
       SmsEncoding::Auto => (),
-      SmsEncoding::Gsm => vec.push(("ENCODING", "gsm")),
-      SmsEncoding::Ucs2 => vec.push(("ENCODING", "ucs2")),
+      SmsEncoding::Gsm => { form_serializer.append_pair("ENCODING", "gsm"); },
+      SmsEncoding::Ucs2 =>{ form_serializer.append_pair("ENCODING", "ucs2"); },
     }
     
-    let body = form_urlencoded::serialize(vec.iter());
+    let body = form_serializer.finish();
      
     let url = self.url.clone() + "/v3/sendsms";
     let mut res = try!(self.client.post(&url)
@@ -235,6 +243,7 @@ impl Client {
     }
 
   }
+
 }
 
 
