@@ -9,6 +9,7 @@ use zensend::OriginatorType;
 use zensend::SmsEncoding;
 use zensend::Error;
 use zensend::ZenSendError;
+use zensend::CreateKeywordRequest;
 
 use hyper::server::{Server, Request, Response, Handler, Listening};
 use hyper::mime::{Mime, TopLevel, SubLevel};
@@ -67,6 +68,56 @@ fn create_client(response: &'static [u8]) -> (Listening, Client, Arc<Mutex<Saved
   let client = Client::new_with_client_and_url("api_key".into(), hyper::Client::new(), url);
 
   (r, client, mutex)  
+}
+
+#[test]
+fn it_can_create_a_keyword() {
+
+  let response = br#"{
+    "success": {
+        "cost_in_pence": 5.4,
+        "new_balance_in_pence": 10.2
+    }
+  }"#;
+
+  let (mut r, client, mutex) = create_client(response);
+
+
+  let wrapped_result = client.create_keyword(CreateKeywordRequest { shortcode: "SC", keyword: "KW", ..Default::default()});
+
+  r.close().unwrap();
+  let result = wrapped_result.unwrap();
+  let data = mutex.lock().unwrap();
+
+  assert_eq!(5.4, result.cost_in_pence);
+  assert_eq!(10.2, result.new_balance_in_pence);
+
+  assert_eq!("SHORTCODE=SC&KEYWORD=KW&IS_STICKY=false", (*data).body);
+}
+
+#[test]
+fn it_can_create_a_keyword_with_mo_url() {
+
+  let response = br#"{
+    "success": {
+        "cost_in_pence": 5.4,
+        "new_balance_in_pence": 10.2
+    }
+  }"#;
+
+  let (mut r, client, mutex) = create_client(response);
+
+
+  let wrapped_result = client.create_keyword(CreateKeywordRequest { shortcode: "SC", keyword: "KW", is_sticky: true, mo_url: Some("http://mo")});
+
+  r.close().unwrap();
+  let result = wrapped_result.unwrap();
+  let data = mutex.lock().unwrap();
+
+  assert_eq!(5.4, result.cost_in_pence);
+  assert_eq!(10.2, result.new_balance_in_pence);
+
+  assert_eq!("SHORTCODE=SC&KEYWORD=KW&IS_STICKY=true&MO_URL=http%3A%2F%2Fmo", (*data).body);
 }
 
 #[test]

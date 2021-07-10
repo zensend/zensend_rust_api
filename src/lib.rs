@@ -22,6 +22,12 @@ pub struct SmsResult {
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct CreateKeywordResult {
+  pub cost_in_pence: f64,
+  pub new_balance_in_pence: f64
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
 struct Prices {
   prices_in_pence: HashMap<String, f64>
 }
@@ -119,6 +125,14 @@ pub struct Message<'a> {
   pub time_to_live_in_minutes: Option<i32>
 }
 
+#[derive(Default)]
+pub struct CreateKeywordRequest<'a> {
+  pub shortcode: &'a str,
+  pub keyword: &'a str,
+  pub is_sticky: bool,
+  pub mo_url: Option<&'a str>,
+}
+
 pub struct Client {
   client: hyper::Client,
   api_key: String,
@@ -177,6 +191,29 @@ impl Client {
 
     let result:Prices = try!(self.handle_result(&mut res));
     Ok(result.prices_in_pence)
+  }
+
+  pub fn create_keyword(&self, keyword_request : CreateKeywordRequest) -> Result<CreateKeywordResult, Error> {
+    let sticky = keyword_request.is_sticky.to_string();
+    let mut vec = vec![("SHORTCODE", keyword_request.shortcode), ("KEYWORD", keyword_request.
+    keyword), ("IS_STICKY", &sticky)];
+
+    match keyword_request.mo_url {
+      Some(url) => {
+        vec.push(("MO_URL", url))
+      },
+      None => (),
+    }
+
+    let body = form_urlencoded::serialize(vec.iter());
+    let url = self.url.clone() + "/v3/keywords";
+
+    let mut res = try!(self.client.post(&url)
+      .body(body.as_bytes())
+      .headers(self.api_headers())
+      .send());
+
+    self.handle_result(&mut res)
   }
 
   pub fn send_sms(&self, message: Message) -> Result<SmsResult, Error> {
